@@ -116,7 +116,7 @@ block:row.block,value:code,field:"revenue_village_code"})});
  return {obj:await res.json(),name:name};
 }
 async function downloadGeo(){
- try{s.textContent="Downloading...";let g=await fetchGeo();let b=new Blob([JSON.stringify(g.obj)],{type:"application/geo+json"});let a=document.createElement("a");a.href=URL.createObjectURL(b);a.download="PuriSadar_"+g.name+".geojson";a.click();URL.revokeObjectURL(a.href);s.textContent="Done";}catch(e){s.textContent=e;}
+ try{s.textContent="Downloading...";let g=await fetchGeo();let b=new Blob([JSON.stringify(g.obj)],{type:"application/geo+json"});let a=document.createElement("a");a.href=URL.createObjectURL(b);a.download=""+g.name+".geojson";a.click();URL.revokeObjectURL(a.href);s.textContent="Done";}catch(e){s.textContent=e;}
 }
 async function downloadKML(){
  try{s.textContent="Converting...";let g=await fetchGeo();let feats=g.obj.type==="FeatureCollection"?g.obj.features:g.obj.type==="Feature"?[g.obj]:[];let k='<?xml version="1.0" encoding="UTF-8"?><kml xmlns="http://www.opengis.net/kml/2.2"><Document><Style id="s"><LineStyle><color>ffffff00</color><width>0.5</width></LineStyle><PolyStyle><color>00ffffff</color><fill>0</fill></PolyStyle></Style>';
