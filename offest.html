@@ -1,0 +1,684 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KML Offset Tool</title>
+
+<!-- OpenLayers CSS (CDN) -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ol@9.2.4/ol.css">
+
+<style>
+  /* ======================================================
+     ROOT / RESET
+     ====================================================== */
+  :root{
+    --accent:        #1f6f78;   /* deep survey-teal accent   */
+    --accent-dark:   #16525a;
+    --accent-light:  #e6f2f3;
+    --ink:           #1c2b2e;
+    --ink-soft:      #5c6b6d;
+    --panel-bg:      #ffffff;
+    --page-bg:       #f2f5f4;
+    --border:        #dde4e3;
+    --mono:          "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+    --sans:          -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+
+  *{ box-sizing: border-box; }
+
+  html, body{
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    font-family: var(--sans);
+    background: var(--page-bg);
+    color: var(--ink);
+  }
+
+  /* ======================================================
+     HEADER
+     ====================================================== */
+  header{
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 22px;
+    background: var(--accent-dark);
+    color: #fff;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+    z-index: 20;
+    position: relative;
+  }
+
+  header h1{
+    font-size: 1.05rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    margin: 0;
+  }
+
+  header .subtitle{
+    font-size: 0.72rem;
+    color: rgba(255,255,255,0.72);
+    font-family: var(--mono);
+    letter-spacing: 0.03em;
+  }
+
+  /* ======================================================
+     LAYOUT
+     ====================================================== */
+  .app-container{
+    display: flex;
+    height: calc(100vh - 54px);
+    width: 100%;
+  }
+
+  /* -------------------- LEFT PANEL -------------------- */
+  .panel{
+    width: 25%;
+    min-width: 300px;
+    max-width: 420px;
+    background: var(--panel-bg);
+    border-right: 1px solid var(--border);
+    padding: 18px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+  }
+
+  .panel-section{
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px 16px;
+    background: #fbfcfc;
+  }
+
+  .panel-section h2{
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--ink-soft);
+    margin: 0 0 10px 0;
+    font-weight: 700;
+  }
+
+  /* File upload */
+  .file-drop{
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  input[type="file"]{
+    font-size: 0.82rem;
+    padding: 8px;
+    border: 1px dashed var(--border);
+    border-radius: 8px;
+    background: #fff;
+    cursor: pointer;
+  }
+
+  #statusLine{
+    font-size: 0.75rem;
+    color: var(--ink-soft);
+    line-height: 1.4;
+    word-break: break-word;
+  }
+
+  /* Sliders */
+  .slider-row{
+    margin-bottom: 14px;
+  }
+  .slider-row:last-child{ margin-bottom: 0; }
+
+  .slider-label-line{
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 6px;
+  }
+
+  .slider-label-line label{
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--ink);
+  }
+
+  .slider-value{
+    font-family: var(--mono);
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--accent-dark);
+    background: var(--accent-light);
+    padding: 2px 8px;
+    border-radius: 6px;
+    min-width: 64px;
+    text-align: right;
+  }
+
+  input[type="range"]{
+    width: 100%;
+    accent-color: var(--accent);
+    cursor: pointer;
+    height: 4px;
+  }
+
+  .range-minmax{
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.65rem;
+    color: #9aa6a5;
+    font-family: var(--mono);
+    margin-top: 2px;
+  }
+
+  /* Buttons */
+  .btn{
+    width: 100%;
+    padding: 10px 14px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    border-radius: 8px;
+    border: 1px solid transparent;
+    cursor: pointer;
+    transition: background 0.15s ease, opacity 0.15s ease;
+  }
+
+  .btn-secondary{
+    background: #fff;
+    color: var(--ink);
+    border: 1px solid var(--border);
+  }
+  .btn-secondary:hover{ background: #f0f3f2; }
+
+  .btn-primary{
+    background: var(--accent);
+    color: #fff;
+  }
+  .btn-primary:hover{ background: var(--accent-dark); }
+
+  .btn:disabled{
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+
+  .btn-row{
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  /* -------------------- MAP -------------------- */
+  .map-wrap{
+    flex: 1;
+    position: relative;
+    height: 100%;
+  }
+
+  #map{
+    width: 100%;
+    height: 100%;
+  }
+
+  .map-badge{
+    position: absolute;
+    bottom: 10px;
+    left: 10px;
+    background: rgba(28,43,46,0.78);
+    color: #fff;
+    font-family: var(--mono);
+    font-size: 0.68rem;
+    padding: 4px 9px;
+    border-radius: 6px;
+    z-index: 5;
+    pointer-events: none;
+  }
+
+  /* ======================================================
+     RESPONSIVE
+     ====================================================== */
+  @media (max-width: 820px){
+    .app-container{
+      flex-direction: column;
+      height: auto;
+    }
+    .panel{
+      width: 100%;
+      max-width: none;
+      max-height: 46vh;
+      border-right: none;
+      border-bottom: 1px solid var(--border);
+      order: 2;
+    }
+    .map-wrap{
+      height: 54vh;
+      order: 1;
+    }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>KML Offset Tool</h1>
+  <span class="subtitle">CADASTRAL ALIGNMENT · ESRI WORLD IMAGERY</span>
+</header>
+
+<div class="app-container">
+
+  <!-- ============================================================
+       LEFT CONTROL PANEL
+       ============================================================ -->
+  <div class="panel">
+
+    <!-- Upload -->
+    <div class="panel-section">
+      <h2>Upload KML</h2>
+      <div class="file-drop">
+        <input type="file" id="fileInput" accept=".kml">
+        <div id="statusLine">No file loaded.</div>
+      </div>
+    </div>
+
+    <!-- Display -->
+    <div class="panel-section">
+      <h2>Display</h2>
+      <div class="slider-row">
+        <div class="slider-label-line">
+          <label for="opacitySlider">Opacity</label>
+          <span class="slider-value" id="opacityValue">50%</span>
+        </div>
+        <input type="range" id="opacitySlider" min="0" max="100" step="1" value="50">
+        <div class="range-minmax"><span>0%</span><span>100%</span></div>
+      </div>
+    </div>
+
+    <!-- Offset controls -->
+    <div class="panel-section">
+      <h2>Positional Offset</h2>
+
+      <div class="slider-row">
+        <div class="slider-label-line">
+          <label for="eastingSlider">Easting (E&#8596;W)</label>
+          <span class="slider-value" id="eastingValue">0.00 m</span>
+        </div>
+        <input type="range" id="eastingSlider" min="-20" max="20" step="0.05" value="0">
+        <div class="range-minmax"><span>-20 m</span><span>+20 m</span></div>
+      </div>
+
+      <div class="slider-row">
+        <div class="slider-label-line">
+          <label for="northingSlider">Northing (N&#8596;S)</label>
+          <span class="slider-value" id="northingValue">0.00 m</span>
+        </div>
+        <input type="range" id="northingSlider" min="-20" max="20" step="0.05" value="0">
+        <div class="range-minmax"><span>-20 m</span><span>+20 m</span></div>
+      </div>
+
+      <div class="slider-row">
+        <div class="slider-label-line">
+          <label for="rotationSlider">Rotation</label>
+          <span class="slider-value" id="rotationValue">0.00&deg;</span>
+        </div>
+        <input type="range" id="rotationSlider" min="-5" max="5" step="0.01" value="0">
+        <div class="range-minmax"><span>-5&deg;</span><span>+5&deg;</span></div>
+      </div>
+    </div>
+
+    <!-- Actions -->
+    <div class="panel-section">
+      <h2>Actions</h2>
+      <div class="btn-row">
+        <button class="btn btn-secondary" id="resetBtn">Reset</button>
+        <button class="btn btn-primary" id="downloadBtn" disabled>Download Corrected KML</button>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ============================================================
+       MAP
+       ============================================================ -->
+  <div class="map-wrap">
+    <div id="map"></div>
+    <div class="map-badge">Esri World Imagery</div>
+  </div>
+
+</div>
+
+<!-- OpenLayers JS (CDN) -->
+<script src="https://cdn.jsdelivr.net/npm/ol@9.2.4/dist/ol.js"></script>
+
+<script>
+(function(){
+  "use strict";
+
+  /* ============================================================
+     STATE
+     ============================================================ */
+  var originalKmlText   = null;   // pristine raw KML text, never mutated
+  var fileName           = "";     // original uploaded file name
+  var currentFeatures    = [];     // ol.Feature[] currently on the map
+  var originalGeometries = [];     // pristine clones (EPSG:3857) matching currentFeatures order
+  var centroidMerc       = null;   // [x,y] centroid in EPSG:3857, used as rotation anchor
+  var centroidLat        = 0;      // latitude (deg) of centroid, used for Mercator scale correction
+
+  /* ============================================================
+     DOM REFERENCES
+     ============================================================ */
+  var fileInput      = document.getElementById("fileInput");
+  var statusLine      = document.getElementById("statusLine");
+
+  var opacitySlider   = document.getElementById("opacitySlider");
+  var eastingSlider   = document.getElementById("eastingSlider");
+  var northingSlider  = document.getElementById("northingSlider");
+  var rotationSlider  = document.getElementById("rotationSlider");
+
+  var opacityValue    = document.getElementById("opacityValue");
+  var eastingValue    = document.getElementById("eastingValue");
+  var northingValue   = document.getElementById("northingValue");
+  var rotationValue   = document.getElementById("rotationValue");
+
+  var resetBtn        = document.getElementById("resetBtn");
+  var downloadBtn      = document.getElementById("downloadBtn");
+
+  /* ============================================================
+     MAP SETUP
+     ============================================================ */
+  var kmlFormat = new ol.format.KML({ extractStyles: true, showPointNames: false });
+
+  var vectorSource = new ol.source.Vector();
+
+  // Fallback style used only for geometries that carry no KML style of their own.
+  var fallbackStyle = new ol.style.Style({
+    stroke: new ol.style.Stroke({ color: "#ff3b30", width: 2.5 }),
+    fill:   new ol.style.Fill({ color: "rgba(255,59,48,0.18)" }),
+    image:  new ol.style.Circle({
+      radius: 5,
+      fill:   new ol.style.Fill({ color: "#ff3b30" }),
+      stroke: new ol.style.Stroke({ color: "#ffffff", width: 1.5 })
+    })
+  });
+
+  var vectorLayer = new ol.layer.Vector({
+    source: vectorSource,
+    style: function(feature){
+      var s = feature.getStyle();
+      return s ? s : fallbackStyle;
+    }
+  });
+  vectorLayer.setOpacity(0.5);
+
+  var imageryLayer = new ol.layer.Tile({
+    source: new ol.source.XYZ({
+      url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+      attributions: "Esri, Maxar, Earthstar Geographics, and the GIS User Community",
+      maxZoom: 20
+    })
+  });
+
+  var map = new ol.Map({
+    target: "map",
+    layers: [imageryLayer, vectorLayer],
+    view: new ol.View({
+      center: ol.proj.fromLonLat([0, 20]),
+      zoom: 3
+    })
+  });
+
+  /* ============================================================
+     FILE UPLOAD HANDLING
+     ============================================================ */
+  fileInput.addEventListener("change", function(evt){
+    var file = evt.target.files && evt.target.files[0];
+    if (!file) return;
+
+    if (!/\.kml$/i.test(file.name)){
+      alert("Please upload a file with a .kml extension.");
+      fileInput.value = "";
+      return;
+    }
+
+    var reader = new FileReader();
+    reader.onload = function(e){
+      loadKml(e.target.result, file.name);
+    };
+    reader.onerror = function(){
+      alert("Could not read the selected file.");
+    };
+    reader.readAsText(file);
+  });
+
+  /**
+   * Parse a KML text string, place its features on the map, capture the
+   * pristine (untransformed) geometries, compute the rotation centroid,
+   * and zoom the map to the feature extent.
+   */
+  function loadKml(text, name){
+    var features;
+    try {
+      features = kmlFormat.readFeatures(text, {
+        dataProjection: "EPSG:4326",
+        featureProjection: "EPSG:3857"
+      });
+    } catch (err){
+      alert("Failed to parse KML: " + err.message);
+      return;
+    }
+
+    if (!features || features.length === 0){
+      alert("No placemark geometry was found in this KML file.");
+      return;
+    }
+
+    // Commit new state only after successful parsing.
+    originalKmlText = text;
+    fileName = name;
+
+    vectorSource.clear();
+    vectorSource.addFeatures(features);
+    currentFeatures = features;
+
+    // Store pristine clones so every transform starts from the original geometry.
+    originalGeometries = features.map(function(f){ return f.getGeometry().clone(); });
+
+    // Compute the combined extent -> centroid, used as the rotation anchor
+    // for both the live map preview and the exported KML.
+    var extent = ol.extent.createEmpty();
+    originalGeometries.forEach(function(g){
+      ol.extent.extend(extent, g.getExtent());
+    });
+    centroidMerc = ol.extent.getCenter(extent);
+    centroidLat = ol.proj.toLonLat(centroidMerc)[1];
+
+    map.getView().fit(extent, {
+      size: map.getSize(),
+      padding: [60, 60, 60, 60],
+      maxZoom: 19,
+      duration: 400
+    });
+
+    downloadBtn.disabled = false;
+    statusLine.textContent = "Loaded \u201c" + name + "\u201d \u2014 " +
+      features.length + " feature" + (features.length !== 1 ? "s" : "");
+
+    resetControls();
+  }
+
+  /* ============================================================
+     TRANSFORM ENGINE
+     ============================================================
+     Translation is specified by the user in true ground metres.
+     EPSG:3857 (Web Mercator) is conformal but NOT equidistant: one
+     map unit only equals one true metre at the equator. At latitude
+     phi, map distance = true distance * sec(phi). We therefore scale
+     the requested metre offsets by sec(centroidLat) before applying
+     them in map units, so the sliders always represent real ground
+     metres regardless of where the parcel sits on Earth.
+     Rotation is angle-preserving under Web Mercator, so no such
+     correction is required for the rotation step.
+     ============================================================ */
+
+  function mercatorScaleFactor(latDeg){
+    return 1 / Math.cos(latDeg * Math.PI / 180);
+  }
+
+  /**
+   * Rotate point [x,y] by angleRad (radians, CCW positive) about anchor [ax,ay],
+   * then translate by [dx,dy]. All values are in the same linear unit (map units).
+   */
+  function rotateThenTranslate(x, y, angleRad, anchor, dx, dy){
+    var cos = Math.cos(angleRad);
+    var sin = Math.sin(angleRad);
+    var ox = x - anchor[0];
+    var oy = y - anchor[1];
+    var rx = ox * cos - oy * sin;
+    var ry = ox * sin + oy * cos;
+    return [ anchor[0] + rx + dx, anchor[1] + ry + dy ];
+  }
+
+  /**
+   * Re-derive every feature's displayed geometry from its pristine original,
+   * applying the current slider values. Called on every slider "input" event.
+   */
+  function updateTransform(){
+    var easting     = parseFloat(eastingSlider.value);
+    var northing    = parseFloat(northingSlider.value);
+    var rotationDeg = parseFloat(rotationSlider.value);
+    var opacity     = parseFloat(opacitySlider.value);
+
+    // Update the numeric readouts beside each slider.
+    eastingValue.textContent  = easting.toFixed(2)  + " m";
+    northingValue.textContent = northing.toFixed(2) + " m";
+    rotationValue.textContent = rotationDeg.toFixed(2) + "\u00B0";
+    opacityValue.textContent  = Math.round(opacity) + "%";
+
+    vectorLayer.setOpacity(opacity / 100);
+
+    if (!currentFeatures.length || !centroidMerc) return;
+
+    var rotationRad = rotationDeg * Math.PI / 180;
+    var scale = mercatorScaleFactor(centroidLat);
+    var dxMap = easting  * scale;
+    var dyMap = northing * scale;
+
+    currentFeatures.forEach(function(feature, idx){
+      // Always start from the pristine original geometry to avoid
+      // accumulated rounding error across repeated slider adjustments.
+      var geom = originalGeometries[idx].clone();
+      geom.rotate(rotationRad, centroidMerc);
+      geom.translate(dxMap, dyMap);
+      feature.setGeometry(geom);
+    });
+  }
+
+  /* ============================================================
+     RESET
+     ============================================================ */
+  function resetControls(){
+    opacitySlider.value  = 50;
+    eastingSlider.value  = 0;
+    northingSlider.value = 0;
+    rotationSlider.value = 0;
+    updateTransform();
+  }
+
+  /* ============================================================
+     EXPORT: CORRECTED KML
+     ============================================================
+     The original KML XML is re-parsed fresh from the pristine stored
+     text (never the mutated DOM) and only the contents of every
+     <coordinates> element are rewritten. Everything else — folders,
+     placemark names, styles, extended data, schema — is left exactly
+     as uploaded, so the exported file preserves the full original
+     document structure.
+     ============================================================ */
+  function downloadCorrectedKml(){
+    if (!originalKmlText){
+      alert("Please upload a KML file first.");
+      return;
+    }
+
+    var parser = new DOMParser();
+    var xmlDoc = parser.parseFromString(originalKmlText, "text/xml");
+
+    var parseErrors = xmlDoc.getElementsByTagName("parsererror");
+    if (parseErrors.length){
+      alert("The original KML could not be re-parsed for export.");
+      return;
+    }
+
+    var easting     = parseFloat(eastingSlider.value);
+    var northing    = parseFloat(northingSlider.value);
+    var rotationDeg = parseFloat(rotationSlider.value);
+    var rotationRad = rotationDeg * Math.PI / 180;
+    var scale = mercatorScaleFactor(centroidLat);
+    var dxMap = easting  * scale;
+    var dyMap = northing * scale;
+
+    var coordNodes = xmlDoc.getElementsByTagName("coordinates");
+
+    for (var i = 0; i < coordNodes.length; i++){
+      var node = coordNodes[i];
+      var raw = node.textContent.trim();
+      if (!raw) continue;
+
+      var tuples = raw.split(/\s+/).filter(function(t){ return t.length > 0; });
+
+      var transformedTuples = tuples.map(function(tuple){
+        var parts = tuple.split(",");
+        var lon = parseFloat(parts[0]);
+        var lat = parseFloat(parts[1]);
+        var alt = parts.length > 2 ? parts[2] : null;
+
+        var merc = ol.proj.fromLonLat([lon, lat]);
+        var moved = rotateThenTranslate(merc[0], merc[1], rotationRad, centroidMerc, dxMap, dyMap);
+        var lonLat = ol.proj.toLonLat(moved);
+
+        var out = lonLat[0].toFixed(8) + "," + lonLat[1].toFixed(8);
+        if (alt !== null) out += "," + alt;
+        return out;
+      });
+
+      node.textContent = transformedTuples.join(" ");
+    }
+
+    var serializer = new XMLSerializer();
+    var outText = serializer.serializeToString(xmlDoc);
+    if (outText.indexOf("<?xml") !== 0){
+      outText = '<?xml version="1.0" encoding="UTF-8"?>\n' + outText;
+    }
+
+    var blob = new Blob([outText], { type: "application/vnd.google-earth.kml+xml" });
+    var url = URL.createObjectURL(blob);
+
+    var a = document.createElement("a");
+    a.href = url;
+    a.download = "Corrected_" + fileName;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
+  /* ============================================================
+     EVENT WIRING
+     ============================================================ */
+  opacitySlider.addEventListener("input", updateTransform);
+  eastingSlider.addEventListener("input", updateTransform);
+  northingSlider.addEventListener("input", updateTransform);
+  rotationSlider.addEventListener("input", updateTransform);
+
+  resetBtn.addEventListener("click", resetControls);
+  downloadBtn.addEventListener("click", downloadCorrectedKml);
+
+  // Initialise readouts to their default state on load.
+  updateTransform();
+
+})();
+</script>
+
+</body>
+</html>
