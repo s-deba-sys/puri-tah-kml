@@ -32,6 +32,15 @@ async function downloadKML(){
  k+="</Document></kml>";let b=new Blob([k],{type:"application/vnd.google-earth.kml+xml"});let a=document.createElement("a");a.href=URL.createObjectURL(b);a.download="PuriSadar_"+g.name+".kml";a.click();URL.revokeObjectURL(a.href);s.textContent="Done";}catch(e){s.textContent=e;}
 }
 </script></body></html>
+
+<hr>
+<footer style="text-align:center;font-size:13px;margin-top:30px;color:#666">
+    Data Source:
+    <a href="https://odisha4kgeo.in" target="_blank">
+        KML Offset Portal
+    </a>
+</footer>
+
 <hr>
 <footer style="text-align:center;font-size:13px;margin-top:30px;color:#666">
     Data Source:
