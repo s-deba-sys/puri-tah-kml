@@ -5,9 +5,14 @@ select,button{width:100%;padding:10px;margin-top:10px;font-size:16px}
 button{cursor:pointer}
 </style></head><body>
 <h2>Odisha GeoJSON / KML Downloader</h2>
-<p><b>District:</b> Puri<br><b>Block:</b> Puri Sadar</p>
+<select id="d">
+    <option>Loading districts...</option>
+</select>
+<select id="b">
+    <option>Select district first</option>
+</select>
 <select id="v">
-    <option>Loading villages...</option>
+    <option>Select block first</option>
 </select>
 <button onclick="downloadGeo()">🟢 Download GeoJSON</button>
 <button onclick="downloadKML()">🔵 Download KML</button>
@@ -22,12 +27,14 @@ function esc(s){return String(s??"").replace(/[&<>"]/g,m=>({"&":"&amp;","<":"&lt
 const villages=[];
 
 async function loadVillages(){
+  try{
+    const res=await fetch("villages.csv");
+    if(!res.ok)throw new Error("Could not load villages.csv (HTTP "+res.status+")");
+    const txt=await res.text();
 
-    const txt=await fetch("villages.csv").then(r=>r.text());
+    const lines=txt.split(/\r?\n/).map(l=>l.trim()).filter(l=>l.length>0);
 
-    const lines=txt.trim().split("\n");
-
-    lines.shift();
+    lines.shift(); // drop header row
 
     for(const line of lines){
 
@@ -42,25 +49,61 @@ async function loadVillages(){
 
     }
 
-    v.innerHTML="";
+    if(villages.length===0)throw new Error("villages.csv loaded but contained no rows");
 
-    villages.forEach(row=>{
+    populateDistricts();
 
-        let o=document.createElement("option");
+    s.textContent="Loaded "+villages.length+" villages.";
 
-        o.value=row.code;
-
-        o.textContent=row.village;
-
-        v.appendChild(o);
-
-    });
-
+  }catch(e){
+    d.innerHTML="<option>Failed to load districts</option>";
+    s.textContent="Error loading villages.csv: "+e.message+
+      " — if you opened this file directly (file://), you need to serve it via a local web server or GitHub Pages instead, since browsers block fetch() of local files.";
+    console.error(e);
+  }
 }
+
+function populateDistricts(){
+    const districts=[...new Set(villages.map(row=>row.district))].sort();
+    d.innerHTML="";
+    districts.forEach(name=>{
+        let o=document.createElement("option");
+        o.value=name;
+        o.textContent=name;
+        d.appendChild(o);
+    });
+    populateBlocks();
+}
+
+function populateBlocks(){
+    const blocks=[...new Set(villages.filter(row=>row.district===d.value).map(row=>row.block))].sort();
+    b.innerHTML="";
+    blocks.forEach(name=>{
+        let o=document.createElement("option");
+        o.value=name;
+        o.textContent=name;
+        b.appendChild(o);
+    });
+    populateVillages();
+}
+
+function populateVillages(){
+    const rows=villages.filter(row=>row.district===d.value && row.block===b.value);
+    v.innerHTML="";
+    rows.forEach(row=>{
+        let o=document.createElement("option");
+        o.value=row.code;
+        o.textContent=row.village;
+        v.appendChild(o);
+    });
+}
+
+d.onchange=populateBlocks;
+b.onchange=populateVillages;
 
 loadVillages();
 async function fetchGeo(){
-const row=villages.find(x=>x.code===v.value);
+const row=villages.find(x=>x.district===d.value && x.block===b.value && x.code===v.value);
 
 const code=row.code;
 
