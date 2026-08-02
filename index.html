@@ -32,11 +32,15 @@ async function downloadKML(){
  k+="</Document></kml>";let b=new Blob([k],{type:"application/vnd.google-earth.kml+xml"});let a=document.createElement("a");a.href=URL.createObjectURL(b);a.download="PuriSadar_"+g.name+".kml";a.click();URL.revokeObjectURL(a.href);s.textContent="Done";}catch(e){s.textContent=e;}
 }
 </script></body></html>
-<p style="text-align:center;font-size:13px;color:#666;">
-© 2026 Debashis Shivamangal. All rights reserved.
-Copyright (c) 2026 Debashis Shivamangal
-
-All rights reserved.
-
-No part of this software, including its source code, HTML, JavaScript, CSS, images, or documentation, may be copied, modified, redistributed, published, or used for commercial or non-commercial purposes without the prior written permission of the copyright holder.
-</p>
+<hr>
+<footer style="text-align:center;font-size:13px;margin-top:30px;color:#666">
+    Data Source:
+    <a href="https://odisha4kgeo.in" target="_blank">
+        Odisha 4KGeo Portal (ORSAC)
+    </a>
+    <br>
+    Boundary data sourced from the Odisha 4KGeo portal developed by ORSAC.
+This website is an independent utility for downloading and converting publicly accessible boundary data.This website is an independent utility and is not affiliated with or endorsed by ORSAC or the Government of Odisha.
+    <br><br>
+    © 2026 Debashis Shivamangal. All rights reserved.
+</footer>
