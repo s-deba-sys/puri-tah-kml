@@ -1,0 +1,608 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Retirement Planning Simulator</title>
+    <!-- Chart.js for smooth interactive rendering -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-hover: #1d4ed8;
+            --bg-gradient: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            --card-bg: #ffffff;
+            --text-main: #0f172a;
+            --text-muted: #64748b;
+            --border: #e2e8f0;
+            --accent-green: #059669;
+            --accent-red: #dc2626;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        body {
+            background-color: #f1f5f9;
+            color: var(--text-main);
+            padding: 30px 16px;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1280px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        header h1 {
+            font-size: 2.25rem;
+            color: #1e293b;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        header p {
+            color: var(--text-muted);
+            font-size: 1.05rem;
+        }
+
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 24px;
+        }
+
+        @media (min-width: 992px) {
+            .dashboard-grid {
+                grid-template-columns: 440px 1fr;
+            }
+        }
+
+        .card {
+            background: var(--card-bg);
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.01);
+            border: 1px solid var(--border);
+        }
+
+        .card-title {
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: #1e293b;
+            margin-bottom: 20px;
+            padding-bottom: 12px;
+            border-bottom: 2px solid #f1f5f9;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .slider-group {
+            margin-bottom: 20px;
+        }
+
+        .slider-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .slider-label {
+            font-size: 0.88rem;
+            font-weight: 600;
+            color: #334155;
+        }
+
+        .slider-value {
+            font-size: 0.95rem;
+            font-weight: 700;
+            color: var(--primary);
+            background: #eff6ff;
+            padding: 3px 10px;
+            border-radius: 6px;
+            border: 1px solid #bfdbfe;
+        }
+
+        .slider-input {
+            width: 100%;
+            height: 6px;
+            border-radius: 3px;
+            background: #cbd5e1;
+            outline: none;
+            accent-color: var(--primary);
+            cursor: pointer;
+        }
+
+        /* KPI Cards Grid */
+        .kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .kpi-card {
+            background: #ffffff;
+            border-radius: 12px;
+            padding: 18px;
+            border: 1px solid var(--border);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .kpi-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 4px;
+            height: 100%;
+            background: var(--primary);
+        }
+
+        .kpi-card.green::before { background: var(--accent-green); }
+        .kpi-card.red::before { background: var(--accent-red); }
+
+        .kpi-title {
+            font-size: 0.78rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-muted);
+            margin-bottom: 6px;
+        }
+
+        .kpi-value {
+            font-size: 1.5rem;
+            font-weight: 800;
+            color: #0f172a;
+        }
+
+        .chart-wrapper {
+            position: relative;
+            height: 400px;
+            width: 100%;
+        }
+
+        .badge {
+            font-size: 0.75rem;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-weight: 600;
+        }
+
+        .badge-accumulation {
+            background: #dcfce7;
+            color: #166534;
+        }
+
+        .badge-retirement {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        /* Table formatting */
+        .table-container {
+            max-height: 280px;
+            overflow-y: auto;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            margin-top: 20px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.85rem;
+            text-align: right;
+        }
+
+        th {
+            background: #f8fafc;
+            color: #475569;
+            font-weight: 700;
+            padding: 10px 14px;
+            position: sticky;
+            top: 0;
+            z-index: 5;
+            border-bottom: 1px solid var(--border);
+        }
+
+        td {
+            padding: 10px 14px;
+            border-bottom: 1px solid #f1f5f9;
+            color: #1e293b;
+        }
+
+        th:first-child, td:first-child { text-align: left; }
+        th:nth-child(2), td:nth-child(2) { text-align: center; }
+
+        tr:hover { background: #f8fafc; }
+
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <h1>Interactive Retirement Simulator</h1>
+        <p>Adjust the sliders to real-time test annual step-ups, inflation impacts, and portfolio drawdowns.</p>
+    </header>
+
+    <div class="dashboard-grid">
+        <!-- Sliders Control Panel -->
+        <div class="card">
+            <h2 class="card-title">Scenario Parameters</h2>
+
+            <div class="slider-group">
+                <div class="slider-header">
+                    <span class="slider-label">Current Age</span>
+                    <span class="slider-value" id="val-currentAge">30 yrs</span>
+                </div>
+                <input type="range" id="currentAge" class="slider-input" min="20" max="60" value="30" step="1">
+            </div>
+
+            <div class="slider-group">
+                <div class="slider-header">
+                    <span class="slider-label">Retirement Age</span>
+                    <span class="slider-value" id="val-retirementAge">60 yrs</span>
+                </div>
+                <input type="range" id="retirementAge" class="slider-input" min="45" max="75" value="60" step="1">
+            </div>
+
+            <div class="slider-group">
+                <div class="slider-header">
+                    <span class="slider-label">Life Expectancy</span>
+                    <span class="slider-value" id="val-lifeExpectancy">85 yrs</span>
+                </div>
+                <input type="range" id="lifeExpectancy" class="slider-input" min="65" max="100" value="85" step="1">
+            </div>
+
+            <div class="slider-group">
+                <div class="slider-header">
+                    <span class="slider-label">Current Corpus (₹)</span>
+                    <span class="slider-value" id="val-currentCorpus">₹7,50,000</span>
+                </div>
+                <input type="range" id="currentCorpus" class="slider-input" min="0" max="5000000" value="750000" step="50000">
+            </div>
+
+            <div class="slider-group">
+                <div class="slider-header">
+                    <span class="slider-label">Initial Monthly Investment (₹)</span>
+                    <span class="slider-value" id="val-monthlyInvest">₹14,000</span>
+                </div>
+                <input type="range" id="monthlyInvest" class="slider-input" min="1000" max="200000" value="14000" step="1000">
+            </div>
+
+            <div class="slider-group">
+                <div class="slider-header">
+                    <span class="slider-label">Annual Investment Step-Up (%)</span>
+                    <span class="slider-value" id="val-stepup">5%</span>
+                </div>
+                <input type="range" id="stepup" class="slider-input" min="0" max="20" value="5" step="1">
+            </div>
+
+            <div class="slider-group">
+                <div class="slider-header">
+                    <span class="slider-label">Desired Monthly Expense (Today's ₹)</span>
+                    <span class="slider-value" id="val-monthlyExpense">₹30,000</span>
+                </div>
+                <input type="range" id="monthlyExpense" class="slider-input" min="10000" max="300000" value="30000" step="5000">
+            </div>
+
+            <div class="slider-group">
+                <div class="slider-header">
+                    <span class="slider-label">Pre-Retirement ROI (%)</span>
+                    <span class="slider-value" id="val-preRoi">10%</span>
+                </div>
+                <input type="range" id="preRoi" class="slider-input" min="4" max="16" value="10" step="0.5">
+            </div>
+
+            <div class="slider-group">
+                <div class="slider-header">
+                    <span class="slider-label">Post-Retirement ROI (%)</span>
+                    <span class="slider-value" id="val-postRoi">7%</span>
+                </div>
+                <input type="range" id="postRoi" class="slider-input" min="3" max="12" value="7" step="0.5">
+            </div>
+
+            <div class="slider-group">
+                <div class="slider-header">
+                    <span class="slider-label">Inflation Rate (%)</span>
+                    <span class="slider-value" id="val-inflation">6%</span>
+                </div>
+                <input type="range" id="inflation" class="slider-input" min="2" max="12" value="6" step="0.5">
+            </div>
+        </div>
+
+        <!-- Dynamic Visualization Dashboard -->
+        <div>
+            <!-- KPI Summary Cards -->
+            <div class="kpi-grid">
+                <div class="kpi-card">
+                    <div class="kpi-title">Corpus at Retirement</div>
+                    <div class="kpi-value" id="kpi-retirementCorpus">₹0</div>
+                </div>
+                <div class="kpi-card green">
+                    <div class="kpi-title">Total Capital Invested</div>
+                    <div class="kpi-value" id="kpi-totalInvested">₹0</div>
+                </div>
+                <div class="kpi-card red">
+                    <div class="kpi-title">1st Yr Retirement Draw</div>
+                    <div class="kpi-value" id="kpi-futureExpense">₹0/mo</div>
+                </div>
+            </div>
+
+            <!-- Chart Card -->
+            <div class="card">
+                <h2 class="card-title">
+                    Wealth Trajectory Curve
+                    <span id="corpusStatus" class="badge badge-accumulation">Plan Active</span>
+                </h2>
+                <div class="chart-wrapper">
+                    <canvas id="wealthChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Detailed Breakdown Table -->
+            <div class="card" style="margin-top: 24px;">
+                <h2 class="card-title">Schedule Breakdown</h2>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Age</th>
+                                <th>Stage</th>
+                                <th>Annual Contribution</th>
+                                <th>Annual Withdrawal</th>
+                                <th>Ending Corpus</th>
+                            </tr>
+                        </thead>
+                        <tbody id="scheduleTable"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    let chart = null;
+
+    function formatINR(val) {
+        return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(val);
+    }
+
+    function updateSlidersUI() {
+        document.getElementById('val-currentAge').innerText = document.getElementById('currentAge').value + ' yrs';
+        document.getElementById('val-retirementAge').innerText = document.getElementById('retirementAge').value + ' yrs';
+        document.getElementById('val-lifeExpectancy').innerText = document.getElementById('lifeExpectancy').value + ' yrs';
+        document.getElementById('val-currentCorpus').innerText = formatINR(document.getElementById('currentCorpus').value);
+        document.getElementById('val-monthlyInvest').innerText = formatINR(document.getElementById('monthlyInvest').value);
+        document.getElementById('val-stepup').innerText = document.getElementById('stepup').value + '%';
+        document.getElementById('val-monthlyExpense').innerText = formatINR(document.getElementById('monthlyExpense').value);
+        document.getElementById('val-preRoi').innerText = document.getElementById('preRoi').value + '%';
+        document.getElementById('val-postRoi').innerText = document.getElementById('postRoi').value + '%';
+        document.getElementById('val-inflation').innerText = document.getElementById('inflation').value + '%';
+    }
+
+    function runSimulation() {
+        updateSlidersUI();
+
+        const currentAge = parseInt(document.getElementById('currentAge').value);
+        let retirementAge = parseInt(document.getElementById('retirementAge').value);
+        let lifeExpectancy = parseInt(document.getElementById('lifeExpectancy').value);
+
+        if (retirementAge <= currentAge) {
+            retirementAge = currentAge + 1;
+            document.getElementById('retirementAge').value = retirementAge;
+            document.getElementById('val-retirementAge').innerText = retirementAge + ' yrs';
+        }
+
+        if (lifeExpectancy <= retirementAge) {
+            lifeExpectancy = retirementAge + 1;
+            document.getElementById('lifeExpectancy').value = lifeExpectancy;
+            document.getElementById('val-lifeExpectancy').innerText = lifeExpectancy + ' yrs';
+        }
+
+        let corpus = parseFloat(document.getElementById('currentCorpus').value);
+        let monthlyInvest = parseFloat(document.getElementById('monthlyInvest').value);
+        const stepup = parseFloat(document.getElementById('stepup').value) / 100;
+        const baseExpenseMonthly = parseFloat(document.getElementById('monthlyExpense').value);
+        const preRoi = parseFloat(document.getElementById('preRoi').value) / 100;
+        const postRoi = parseFloat(document.getElementById('postRoi').value) / 100;
+        const inflation = parseFloat(document.getElementById('inflation').value) / 100;
+
+        const yearsToRetirement = retirementAge - currentAge;
+        const yearsInRetirement = lifeExpectancy - retirementAge;
+
+        let ageLabels = [];
+        let accumulationData = [];
+        let retirementData = [];
+        let tableRows = [];
+
+        let totalInvested = corpus;
+        let currentAnnualInvest = monthlyInvest * 12;
+
+        // 1. Pre-Retirement Phase (Accumulation)
+        for (let y = 0; y < yearsToRetirement; y++) {
+            let age = currentAge + y;
+            ageLabels.push(age);
+
+            // Beginning of Year Contribution
+            corpus = (corpus + currentAnnualInvest) * (1 + preRoi);
+            totalInvested += currentAnnualInvest;
+
+            accumulationData.push(Math.round(corpus));
+            retirementData.push(null);
+
+            tableRows.push({
+                age: age,
+                stage: 'Accumulation',
+                invest: currentAnnualInvest,
+                withdraw: 0,
+                corpus: corpus
+            });
+
+            currentAnnualInvest *= (1 + stepup);
+        }
+
+        const corpusAtRetirement = corpus;
+
+        // 2. Post-Retirement Phase (Drawdown with Inflation Step-Up)
+        let currentAnnualWithdrawal = (baseExpenseMonthly * 12) * Math.pow(1 + inflation, yearsToRetirement);
+        const firstYearMonthlyDraw = currentAnnualWithdrawal / 12;
+
+        // Add retirement age starting point to bridge line chart smoothly
+        ageLabels.push(retirementAge);
+        accumulationData.push(Math.round(corpus));
+        retirementData.push(Math.round(corpus));
+
+        let corpusDepletedAge = null;
+
+        for (let y = 0; y < yearsInRetirement; y++) {
+            let age = retirementAge + y + 1;
+            ageLabels.push(age);
+
+            // Beginning of Year Withdrawal
+            corpus = (corpus - currentAnnualWithdrawal) * (1 + postRoi);
+
+            if (corpus < 0) {
+                corpus = 0;
+                if (!corpusDepletedAge) corpusDepletedAge = age;
+            }
+
+            accumulationData.push(null);
+            retirementData.push(Math.round(corpus));
+
+            tableRows.push({
+                age: age,
+                stage: 'Retirement',
+                invest: 0,
+                withdraw: currentAnnualWithdrawal,
+                corpus: corpus
+            });
+
+            currentAnnualWithdrawal *= (1 + inflation);
+        }
+
+        // Update KPIs
+        document.getElementById('kpi-retirementCorpus').innerText = formatINR(corpusAtRetirement);
+        document.getElementById('kpi-totalInvested').innerText = formatINR(totalInvested);
+        document.getElementById('kpi-futureExpense').innerText = formatINR(firstYearMonthlyDraw) + '/mo';
+
+        const statusBadge = document.getElementById('corpusStatus');
+        if (corpusDepletedAge) {
+            statusBadge.innerText = 'Depletes at Age ' + corpusDepletedAge;
+            statusBadge.className = 'badge badge-retirement';
+        } else {
+            statusBadge.innerText = 'Corpus Sustainable';
+            statusBadge.className = 'badge badge-accumulation';
+        }
+
+        renderChart(ageLabels, accumulationData, retirementData);
+        renderTable(tableRows);
+    }
+
+    function renderChart(labels, accumData, retireData) {
+        const ctx = document.getElementById('wealthChart').getContext('2d');
+
+        if (chart) {
+            chart.destroy();
+        }
+
+        chart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [
+                    {
+                        label: 'Accumulation Phase (₹)',
+                        data: accumData,
+                        borderColor: '#2563eb',
+                        backgroundColor: 'rgba(37, 99, 235, 0.12)',
+                        fill: true,
+                        tension: 0.3,
+                        pointRadius: 2,
+                        pointHoverRadius: 6
+                    },
+                    {
+                        label: 'Retirement Phase (₹)',
+                        data: retireData,
+                        borderColor: '#dc2626',
+                        backgroundColor: 'rgba(220, 38, 38, 0.12)',
+                        fill: true,
+                        tension: 0.3,
+                        pointRadius: 2,
+                        pointHoverRadius: 6
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: { mode: 'index', intersect: false },
+                plugins: {
+                    legend: { display: true, position: 'top' },
+                    tooltip: {
+                        callbacks: {
+                            label: (ctx) => ctx.dataset.label.split(' ')[0] + ': ' + formatINR(ctx.raw)
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        title: { display: true, text: 'Age (Years)' },
+                        grid: { display: false }
+                    },
+                    y: {
+                        title: { display: true, text: 'Corpus Balance (₹)' },
+                        ticks: {
+                            callback: (val) => val >= 10000000 ? (val / 10000000).toFixed(1) + ' Cr' : (val / 100000).toFixed(0) + ' L'
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    function renderTable(rows) {
+        const tbody = document.getElementById('scheduleTable');
+        tbody.innerHTML = '';
+
+        rows.forEach(r => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${r.age}</td>
+                <td><span class="badge ${r.stage === 'Accumulation' ? 'badge-accumulation' : 'badge-retirement'}">${r.stage}</span></td>
+                <td>${r.invest > 0 ? formatINR(r.invest) : '-'}</td>
+                <td>${r.withdraw > 0 ? formatINR(r.withdraw) : '-'}</td>
+                <td style="font-weight:700;">${formatINR(r.corpus)}</td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+
+    // Attach real-time event listeners to all sliders
+    document.querySelectorAll('.slider-input').forEach(input => {
+        input.addEventListener('input', runSimulation);
+    });
+
+    // Initial load
+    runSimulation();
+</script>
+
+</body>
+</html>
