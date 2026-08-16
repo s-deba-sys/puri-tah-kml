@@ -7,8 +7,6 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <style>
   :root{
     --paper: #efead9;
@@ -236,15 +234,6 @@
   }
   .btn-secondary:hover{ background:rgba(166,118,61,.08); }
 
-  .btn-tertiary{
-    background:transparent;
-    color:var(--pine-deep);
-    border-color:var(--line);
-    flex-basis:100%;
-  }
-  .btn-tertiary:hover{ background:rgba(47,82,51,.06); border-color:var(--pine); }
-  .btn-tertiary svg{ flex-shrink:0; }
-
   .status{
     margin:18px 2px 0;
     font-family:'IBM Plex Mono',monospace;
@@ -272,99 +261,6 @@
     border-bottom:1px solid var(--brass);
   }
   .offset-strip a:hover{ color:var(--brass-dark); }
-
-  /* ---- map modal ---- */
-  .map-modal{
-    position:fixed;
-    inset:0;
-    z-index:50;
-    display:none;
-    align-items:center;
-    justify-content:center;
-    background:rgba(28,42,32,.55);
-    padding:20px;
-  }
-  .map-modal.open{ display:flex; }
-  .map-modal-inner{
-    background:var(--white-ish);
-    border:1px solid var(--line);
-    border-radius:3px;
-    width:100%;
-    max-width:720px;
-    box-shadow:0 30px 60px -20px rgba(15,25,18,.5);
-    display:flex;
-    flex-direction:column;
-    overflow:hidden;
-  }
-  .map-header{
-    display:flex;
-    align-items:center;
-    justify-content:space-between;
-    gap:12px;
-    padding:14px 18px;
-    border-bottom:1px solid var(--line);
-    background:var(--paper-deep);
-  }
-  .map-header-text{
-    display:flex;
-    flex-direction:column;
-    gap:2px;
-    min-width:0;
-  }
-  .map-eyebrow{
-    font-family:'IBM Plex Mono',monospace;
-    font-size:10px;
-    letter-spacing:.16em;
-    text-transform:uppercase;
-    color:var(--brass-dark);
-  }
-  #mapTitle{
-    font-family:'Fraunces',serif;
-    font-weight:600;
-    font-size:16px;
-    color:var(--pine-deep);
-    white-space:nowrap;
-    overflow:hidden;
-    text-overflow:ellipsis;
-  }
-  .map-close{
-    flex:0 0 auto;
-    width:30px;height:30px;
-    border-radius:50%;
-    border:1px solid var(--line);
-    background:transparent;
-    color:var(--ink);
-    font-size:16px;
-    line-height:1;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    cursor:pointer;
-  }
-  .map-close:hover{ background:rgba(138,63,52,.1); border-color:var(--alert); color:var(--alert); }
-
-  #mapview{
-    width:100%;
-    height:min(58vh,460px);
-    background:var(--paper-deep);
-  }
-  .map-legend{
-    display:flex;
-    align-items:center;
-    gap:8px;
-    padding:10px 18px;
-    border-top:1px solid var(--line);
-    font-family:'IBM Plex Mono',monospace;
-    font-size:11px;
-    color:#6c7660;
-  }
-  .map-legend .swatch{
-    width:14px;height:14px;
-    border:2px solid var(--brass);
-    background:rgba(47,82,51,.15);
-    border-radius:2px;
-    flex-shrink:0;
-  }
 
   /* ---- footer ---- */
   .seal{
@@ -492,10 +388,6 @@
     <div class="actions">
       <button class="btn-primary" onclick="downloadGeo()">Download GeoJSON</button>
       <button class="btn-secondary" onclick="downloadKML()">Download KML</button>
-      <button class="btn-tertiary" onclick="viewOnMap()">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M9 20l-6-3V4l6 3 6-3 6 3v13l-6-3-6 3z"/><path d="M9 4v13"/><path d="M15 7v13"/></svg>
-        View on Esri Map
-      </button>
     </div>
 
     <p class="status" id="s"></p>
@@ -515,23 +407,6 @@
     <div class="copyright">© 2026 Debashis Shivamangal. All rights reserved.</div>
   </footer>
 
-</div>
-
-<div class="map-modal" id="mapModal">
-  <div class="map-modal-inner">
-    <div class="map-header">
-      <div class="map-header-text">
-        <span class="map-eyebrow">Esri World Imagery</span>
-        <span id="mapTitle">—</span>
-      </div>
-      <button class="map-close" onclick="closeMapModal()" aria-label="Close map">✕</button>
-    </div>
-    <div id="mapview"></div>
-    <div class="map-legend">
-      <span class="swatch"></span>
-      Revenue village boundary, as returned by the 4KGeo portal
-    </div>
-  </div>
 </div>
 
 <script>
@@ -637,51 +512,6 @@ async function downloadKML(){
  try{s.textContent="Converting...";let g=await fetchGeo();let feats=g.obj.type==="FeatureCollection"?g.obj.features:g.obj.type==="Feature"?[g.obj]:[];let k='<?xml version="1.0" encoding="UTF-8"?><kml xmlns="http://www.opengis.net/kml/2.2"><Document><Style id="s"><LineStyle><color>ffffff00</color><width>0.5</width></LineStyle><PolyStyle><color>00ffffff</color><fill>0</fill></PolyStyle></Style>';
  for(let i=0;i<feats.length;i++){let f=feats[i];k+="<Placemark><name>"+esc((f.properties||{}).revenue_plot??i+1)+"</name><styleUrl>#s</styleUrl>"+geometryKML(f.geometry)+"</Placemark>";}
  k+="</Document></kml>";let b=new Blob([k],{type:"application/vnd.google-earth.kml+xml"});let a=document.createElement("a");a.href=URL.createObjectURL(b);a.download=""+g.name+".kml";a.click();URL.revokeObjectURL(a.href);s.textContent="Done";}catch(e){s.textContent=e;}
-}
-
-let leafletMap=null, geoLayer=null;
-
-function ensureMap(){
-  if(leafletMap) return;
-  leafletMap=L.map("mapview",{zoomControl:true,attributionControl:true});
-  L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",{
-    maxZoom:19,
-    attribution:"Tiles &copy; Esri — Source: Esri, Maxar, Earthstar Geographics"
-  }).addTo(leafletMap);
-  L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}",{
-    maxZoom:19,
-    opacity:.9
-  }).addTo(leafletMap);
-  leafletMap.setView([20.9517,85.0985],7); // Odisha, until a boundary loads
-}
-
-async function viewOnMap(){
-  try{
-    s.textContent="Loading map...";
-    let g=await fetchGeo();
-
-    document.getElementById("mapTitle").textContent=g.name;
-    document.getElementById("mapModal").classList.add("open");
-
-    ensureMap();
-    setTimeout(()=>leafletMap.invalidateSize(),0);
-
-    if(geoLayer) leafletMap.removeLayer(geoLayer);
-    geoLayer=L.geoJSON(g.obj,{
-      style:{color:"#a6763d",weight:2,fillColor:"#2f5233",fillOpacity:.15}
-    }).addTo(leafletMap);
-
-    const bounds=geoLayer.getBounds();
-    if(bounds.isValid()) leafletMap.fitBounds(bounds,{padding:[24,24]});
-
-    s.textContent="Done";
-  }catch(e){
-    s.textContent=e;
-  }
-}
-
-function closeMapModal(){
-  document.getElementById("mapModal").classList.remove("open");
 }
 </script>
 </body>
